@@ -1,5 +1,3 @@
-var DOMAIN = 'FILL-ME-IN';
-
 var HIGH_RISK_ACCESS = [
     "https://mail.google.com",
     "https://www.googleapis.com/auth/gmail.compose",
@@ -49,83 +47,6 @@ var HIGH_RISK_ACCESS = [
     "https://www.googleapis.com/auth/admin.reports.usage.readonly"
 ];
 
-//Get all users within "DOMAIN"
-function listAllUsers(cb) {
-    var pageToken, page;
-    do {
-        page = AdminDirectory.Users.list({
-            domain: DOMAIN,
-            orderBy: 'givenName',
-            maxResults: 500,
-            pageToken: pageToken
-        });
-
-        var users = page.users;
-        if (users) {
-            for (var i = 0; i < users.length; i++) {
-                var user = users[i];
-                if (cb) {
-                    cb(user)
-                }
-            }
-        } else {
-            Logger.log('No users found.');
-        }
-        pageToken = page.nextPageToken;
-    } while (pageToken);
-}
-
-//Gets all users and tokens
-function step1() {
-    var tokens = []
-    tokens.push([
-        'primaryEmail',
-        'displayText',
-        'clientId',
-        'anonymous',
-        'scopes'
-    ]);
-
-    listAllUsers(function(user) {
-        try {
-            if (user.suspended) {
-                Logger.log('[suspended] %s (%s)', user.name.fullName, user.primaryEmail);
-                return;
-            }
-
-            var currentTokens = AdminDirectory.Tokens.list(user.primaryEmail);
-            if (currentTokens && currentTokens.items && currentTokens.items.length) {
-                for (var i = 0; i < currentTokens.items.length; i++) {
-                    var tok = currentTokens.items[i];
-                    if (tok.nativeApp == false) {
-                        tokens.push([
-                            user.primaryEmail,
-                            tok.displayText,
-                            tok.clientId,
-                            tok.anonymous,
-                            tok.scopes.join('\n'),
-                        ]);
-                    }
-                }
-            }
-        } catch (e) {
-            Logger.log("[error] %s: %s", user.primaryEmail, e);
-        }
-    });
-
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("Users")
-    if (sheet == null) {
-        sheet = ss.insertSheet("Users");
-    } else {
-        sheet.clear();
-    }
-
-    Logger.log('Tokens written to Sheet Users: %s', tokens.length);
-    var dataRange = sheet.getRange(1, 1, tokens.length, tokens[0].length);
-    dataRange.setValues(tokens);
-}
-
 //Get counts of token usage
 function step2() {
     var countsRows = [];
@@ -171,7 +92,7 @@ function step2() {
         }
         //Check if scopes appear in HIGH_RISK_ACCESS
         var match = false;
-        oauth_scopes = token[4].split('\n');
+        oauth_scopes = token[4].split(' ');
         if (HIGH_RISK_ACCESS.some(function(element) {
                 //Logger.log(token);
                 return oauth_scopes.indexOf(element) >= 0;
