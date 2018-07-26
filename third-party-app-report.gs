@@ -59,11 +59,9 @@ function step2() {
     ])
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("Users")
-    if (sheet == null) {
-        Logger.log('Did not find Users tab. First run function "step1"')
-        return;
-    }
+    var sheetName = ss.getSheets()[0].getSheetName();
+    Logger.log(sheetName);
+    var sheet = ss.getSheetByName(sheetName);
     var range = sheet.getDataRange();
     var tokens = range.getValues();
     tokens.shift(); //Remove header
@@ -71,7 +69,9 @@ function step2() {
     //Get counts of each token. Format [clientId = count]
     Logger.log('Counting tokens...');
     var tokenInstallCount = tokens.reduce(function(sums, entry) {
-        sums[entry[2]] = (sums[entry[2]] || 0) + 1;
+      if(entry[4] == false){
+        sums[entry[1]] = (sums[entry[1]] || 0) + 1;
+      }
         return sums;
     }, {});
 
@@ -81,7 +81,7 @@ function step2() {
         //Retrieve information associated with clientId
         var token = [];
         for (var i = 0; i < tokens.length; i++) {
-            if (tokens[i][2] == tokenRow) {
+            if (tokens[i][1] == tokenRow) {
                 token = tokens[i];
                 break;
             }
@@ -92,7 +92,7 @@ function step2() {
         }
         //Check if scopes appear in HIGH_RISK_ACCESS
         var match = false;
-        oauth_scopes = token[4].split(' ');
+        oauth_scopes = token[6].split(' ');
         if (HIGH_RISK_ACCESS.some(function(element) {
                 //Logger.log(token);
                 return oauth_scopes.indexOf(element) >= 0;
@@ -102,10 +102,10 @@ function step2() {
 
         countsRows.push([
             tokenInstallCount[tokenRow],
-            token[1],
             token[2],
+            token[1],
             match,
-            token[4]
+            token[6]
         ])
     }
 
